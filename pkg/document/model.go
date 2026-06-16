@@ -74,7 +74,7 @@ func sortValueRowsByOrder(valueRows []valueRow, sortOrder string) {
 			}
 			return valueRows[i].LineNumber < valueRows[j].LineNumber
 		case AlphaNumSortOrder:
-			return valueRows[i].Key < valueRows[j].Key
+			return strings.ToLower(valueRows[i].Key) < strings.ToLower(valueRows[j].Key)
 		default:
 			panic("cannot get here")
 		}
