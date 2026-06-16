@@ -141,7 +141,7 @@ func getDescriptionFromNode(key *yaml.Node, value *yaml.Node) helm.ChartValueDes
 
 	if value != nil && value.LineComment != "" {
 		description := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(value.LineComment, "#"), " "))
-		description = strings.ReplaceAll(description, " // ", "<br>")
+		description = strings.ReplaceAll(description, " // ", "\n\n")
 		if description != "" {
 			return helm.ChartValueDescription{Description: description}
 		}
