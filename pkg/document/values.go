@@ -125,25 +125,28 @@ func jsonMarshalNoEscape(key string, value interface{}) (string, error) {
 	return strings.TrimRight(outputBuffer.String(), "\n"), nil
 }
 
-func getDescriptionFromNode(node *yaml.Node) helm.ChartValueDescription {
-	if node == nil {
+func getDescriptionFromNode(key *yaml.Node, value *yaml.Node) helm.ChartValueDescription {
+	if key == nil {
 		return helm.ChartValueDescription{}
 	}
 
-	if node.HeadComment == "" {
-		return helm.ChartValueDescription{}
+	if key.HeadComment != "" && strings.Contains(key.HeadComment, helm.PrefixComment) {
+		commentLines := strings.Split(key.HeadComment, "\n")
+		keyFromComment, c := helm.ParseComment(commentLines)
+		if keyFromComment != "" {
+			return helm.ChartValueDescription{}
+		}
+		return c
 	}
 
-	if !strings.Contains(node.HeadComment, helm.PrefixComment) {
-		return helm.ChartValueDescription{}
-	}
-	commentLines := strings.Split(node.HeadComment, "\n")
-	keyFromComment, c := helm.ParseComment(commentLines)
-	if keyFromComment != "" {
-		return helm.ChartValueDescription{}
+	if value != nil && value.LineComment != "" {
+		description := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(value.LineComment, "#"), " "))
+		if description != "" {
+			return helm.ChartValueDescription{Description: description}
+		}
 	}
 
-	return c
+	return helm.ChartValueDescription{}
 }
 
 func createValueRow(
@@ -213,7 +216,7 @@ func createValueRowsFromList(
 	documentLeafNodes bool,
 ) ([]valueRow, error) {
 	description, hasDescription := keysToDescriptions[prefix]
-	autoDescription := getDescriptionFromNode(key)
+	autoDescription := getDescriptionFromNode(key, values)
 
 	// If we encounter an empty list, it should be documented if no parent object or list had a description or if this
 	// list has a description
@@ -301,7 +304,7 @@ func createValueRowsFromObject(
 	documentLeafNodes bool,
 ) ([]valueRow, error) {
 	description, hasDescription := keysToDescriptions[nextPrefix]
-	autoDescription := getDescriptionFromNode(key)
+	autoDescription := getDescriptionFromNode(key, values)
 
 	if len(values.Content) == 0 {
 		// if the first level of recursion has no values, then there are no values at all, and so we return zero rows of documentation
@@ -400,7 +403,7 @@ func createValueRowsFromField(
 	case yaml.AliasNode:
 		return createValueRowsFromField(prefix, key, value.Alias, keysToDescriptions, documentLeafNodes)
 	case yaml.ScalarNode:
-		autoDescription := getDescriptionFromNode(key)
+		autoDescription := getDescriptionFromNode(key, value)
 		description, hasDescription := keysToDescriptions[prefix]
 		if !(documentLeafNodes || hasDescription || autoDescription.Description != "") {
 			return []valueRow{}, nil
