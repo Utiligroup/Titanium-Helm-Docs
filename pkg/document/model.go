@@ -74,7 +74,19 @@ func sortValueRowsByOrder(valueRows []valueRow, sortOrder string) {
 			}
 			return valueRows[i].LineNumber < valueRows[j].LineNumber
 		case AlphaNumSortOrder:
-			return strings.ToLower(valueRows[i].Key) < strings.ToLower(valueRows[j].Key)
+			ki := strings.ToLower(valueRows[i].Key)
+			kj := strings.ToLower(valueRows[j].Key)
+			// Within the same top-level group, leaf keys (one dot) sort before nested keys
+			pi := strings.SplitN(ki, ".", 2)
+			pj := strings.SplitN(kj, ".", 2)
+			if pi[0] == pj[0] {
+				iIsLeaf := !strings.Contains(pi[1], ".")
+				jIsLeaf := !strings.Contains(pj[1], ".")
+				if iIsLeaf != jIsLeaf {
+					return iIsLeaf
+				}
+			}
+			return ki < kj
 		default:
 			panic("cannot get here")
 		}
