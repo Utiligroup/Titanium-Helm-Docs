@@ -83,7 +83,7 @@ func sortValueRowsByOrder(valueRows []valueRow, sortOrder string) {
 				iIsLeaf := !strings.Contains(pi[1], ".")
 				jIsLeaf := !strings.Contains(pj[1], ".")
 				if iIsLeaf != jIsLeaf {
-					return iIsLeaf
+					return !iIsLeaf
 				}
 			}
 			return ki < kj
