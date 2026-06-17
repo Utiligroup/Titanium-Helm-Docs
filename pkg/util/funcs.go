@@ -12,6 +12,9 @@ func FuncMap() template.FuncMap {
 	f := sprig.TxtFuncMap()
 	f["toYaml"] = toYAML
 	f["fromYaml"] = fromYAML
+	f["nlToHtmlEntity"] = func(s string) string {
+		return strings.ReplaceAll(s, "\n", "&#10;")
+	}
 	return f
 }
 
