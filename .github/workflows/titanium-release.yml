@@ -1,0 +1,76 @@
+name: ESG release
+
+# Publishes the prebuilt binary that Billing-Deployment's nightly build uses to
+# regenerate deployment/README.md.
+#
+# Our own tag namespace, deliberately separate from the inherited upstream tags:
+#   esg/v<major>.<minor>.<patch>   e.g. esg/v1.0.0
+#
+# The prefix does two jobs. It folders the tags in GitKraken, and it keeps them
+# clear of the inherited release.yml, which fires on v* and needs DockerHub, GPG
+# and norwoodj org secrets we do not have. Never push a bare v* tag here - the 43
+# inherited upstream tags already occupy that namespace.
+#
+# Bump the minor version whenever a change lands that Billing-Deployment's
+# README.md.gotmpl depends on - a new template function, for example - and pin the
+# new tag in that repo's deployment/.helm-docs-version in the same change.
+
+on:
+  push:
+    tags:
+      - "esg/v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing esg/v* tag to build and release"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish linux/amd64 binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          # The consumer is an Ubuntu ARC runner, so linux/amd64 is the only target
+          # needed. -s -w strips the binary from ~12MB down to something worth
+          # downloading nightly.
+          go build -trimpath -ldflags="-s -w" -o helm-docs ./cmd/helm-docs
+          ./helm-docs --help > /dev/null
+
+          # Version in the filename so the asset stays identifiable once it is off the
+          # release page. esg/v1.0.0 -> helm-docs_1.0.0_linux_amd64.tar.gz
+          VERSION="${TAG#esg/v}"
+          ASSET="helm-docs_${VERSION}_linux_amd64.tar.gz"
+          tar -czf "$ASSET" helm-docs
+          echo "ASSET=$ASSET" >> $GITHUB_ENV
+          ls -lh helm-docs "$ASSET"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          gh release create "$TAG" "$ASSET" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --notes "ESG build of helm-docs, used by Billing-Deployment to generate the chart README. linux/amd64."
