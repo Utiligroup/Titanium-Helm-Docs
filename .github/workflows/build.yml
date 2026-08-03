@@ -1,13 +1,14 @@
 name: Build
 
+# Manual only. Tags are the only thing that builds in this fork - see
+# titanium-release.yml, which publishes the binary on esg/v* tags.
+#
+# This is upstream's CI and it does not pass here: the goreleaser before-hook runs
+# `go test ./...`, and two upstream tests assert the key ordering that this fork
+# deliberately inverted (sub-groups before leaf keys). Left dispatchable rather than
+# deleted so the gosec and example-chart checks stay available on demand.
 on:
-  push:
-    branches:
-      - "*"
-    tags-ignore:
-      - "*"
-  pull_request:
-    types: [opened, reopened]
+  workflow_dispatch:
 
 jobs:
   build:
