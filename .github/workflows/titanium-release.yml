@@ -62,15 +62,22 @@ jobs:
           VERSION="${TAG#esg/v}"
           ASSET="helm-docs_${VERSION}_linux_amd64.tar.gz"
           tar -czf "$ASSET" helm-docs
+
+          # Published alongside the archive so the consumer can verify what it is about
+          # to execute. A tag is mutable and a release asset can be replaced, so pinning
+          # the version alone does not establish that the bytes are the ones built here.
+          sha256sum "$ASSET" > "$ASSET.sha256"
+          cat "$ASSET.sha256"
+
           echo "ASSET=$ASSET" >> $GITHUB_ENV
-          ls -lh helm-docs "$ASSET"
+          ls -lh helm-docs "$ASSET" "$ASSET.sha256"
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
         run: |
-          gh release create "$TAG" "$ASSET" \
+          gh release create "$TAG" "$ASSET" "$ASSET.sha256" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$TAG" \
             --notes "ESG build of helm-docs, used by Billing-Deployment to generate the chart README. linux/amd64."
