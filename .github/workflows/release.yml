@@ -1,9 +1,15 @@
 name: Release
 
+# Manual only. This is upstream's release process and it cannot work here: it needs
+# DOCKER_HUB_USER, DOCKER_HUB_PASSWORD, SIGNING_KEY and NORWOODJ_ORG_TOKEN, and the
+# goreleaser config publishes to norwoodj's homebrew tap and DockerHub image - never
+# somewhere we want to push to.
+#
+# It used to fire on v*, which the 43 inherited upstream tags occupy. Syncing tags from
+# upstream would have triggered a run per tag. Our releases go out through
+# titanium-release.yml on esg/v* instead.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 jobs:
   release:
