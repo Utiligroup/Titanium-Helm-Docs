@@ -76,14 +76,22 @@ func sortValueRowsByOrder(valueRows []valueRow, sortOrder string) {
 		case AlphaNumSortOrder:
 			ki := strings.ToLower(valueRows[i].Key)
 			kj := strings.ToLower(valueRows[j].Key)
-			// Within the same top-level group, leaf keys (one dot) sort before nested keys
+			// Within the same top-level group, nested keys sort before leaf keys.
 			pi := strings.SplitN(ki, ".", 2)
 			pj := strings.SplitN(kj, ".", 2)
 			if pi[0] == pj[0] {
-				iIsLeaf := !strings.Contains(pi[1], ".")
-				jIsLeaf := !strings.Contains(pj[1], ".")
-				if iIsLeaf != jIsLeaf {
-					return !iIsLeaf
+				// A key with no dot is the row for the group itself (a documented parent
+				// map, e.g. `kafka` alongside `kafka.enabled`). It has no path below it,
+				// so there is nothing to index, and it belongs above its own children.
+				if (len(pi) > 1) != (len(pj) > 1) {
+					return len(pj) > 1
+				}
+				if len(pi) > 1 {
+					iIsLeaf := !strings.Contains(pi[1], ".")
+					jIsLeaf := !strings.Contains(pj[1], ".")
+					if iIsLeaf != jIsLeaf {
+						return !iIsLeaf
+					}
 				}
 			}
 			return ki < kj
