@@ -142,8 +142,20 @@ func getDescriptionFromNode(key *yaml.Node, value *yaml.Node) helm.ChartValueDes
 		return c
 	}
 
-	if value != nil && value.LineComment != "" {
-		description := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(value.LineComment, "#"), " "))
+	lineComment := ""
+	if value != nil {
+		lineComment = value.LineComment
+	}
+
+	// A null value has nothing after the colon for the comment to attach to, so yaml.v3 hangs it off the key instead.
+	// This is deliberately limited to null scalars: block mappings and sequences do the same, but adopting their
+	// comment would document the parent as a single row and suppress every leaf beneath it.
+	if lineComment == "" && value != nil && value.Kind == yaml.ScalarNode && value.Tag == nullTag {
+		lineComment = key.LineComment
+	}
+
+	if lineComment != "" {
+		description := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(lineComment, "#"), " "))
 		description = quotedPhraseRegex.ReplaceAllString(description, "**$1**")
 		if description != "" {
 			return helm.ChartValueDescription{Description: description}
